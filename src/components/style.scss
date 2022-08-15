@@ -1,0 +1,18 @@
+$color-picker-size: 300px;
+$color-picker-square-size: 163px;
+
+.color-picker {
+  margin: 200px auto 0;
+  position: relative;
+  &__square {
+    position: absolute;
+  }
+  &__circle {
+    position: absolute;
+    left: 0;
+  }
+  &__operation {
+    position: absolute;
+    left: 0;
+  }
+}
