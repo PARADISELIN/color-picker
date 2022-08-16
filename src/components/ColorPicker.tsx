@@ -1,26 +1,41 @@
 import { defineComponent, ref, computed, onMounted, watch } from 'vue'
-import type { CSSProperties } from 'vue'
+import type { CSSProperties, PropType } from 'vue'
 
 import { hex2rgb, rgb2hex, hsl2rgb, rgb2hsl } from './utils'
-import { colorPickerProps } from './types'
+import type { RGBColorTuple, HSLColorTuple, HEXColorString } from './types'
 import './style.scss'
 
 /**
  * @description 24色相
  */
 const HUE_CIRCLE_NUMBER = 24
-const DEFAULT_START_COLOR = '#000000'
+const DEFAULT_SIZE = 300
+const DEFAULT_COLOR = '#000000'
 
 const ColorPicker = defineComponent({
   name: 'ColorPicker',
-  props: colorPickerProps,
+  props: {
+    size: {
+      type: Number,
+      default: DEFAULT_SIZE,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    modelValue: {
+      type: String as PropType<HEXColorString>,
+      required: true,
+      default: DEFAULT_COLOR,
+    },
+  },
   emits: ['update:modelValue', 'change', 'afterChanged'],
   setup(props, { emit }) {
-    const rgb = ref<number[]>([])
-    const hsl = ref<number[]>([])
+    const rgb = ref<RGBColorTuple>([0, 0, 0])
+    const hsl = ref<HSLColorTuple>([0, 0, 0])
     const color = ref('')
-    const dragging = ref(false)
-    const circleDrag = ref(false)
+    const isDragging = ref(false)
+    const isCircleDragging = ref(false)
     const invert = ref(false)
 
     const containerRef = ref<HTMLElement | null>(null)
@@ -77,7 +92,7 @@ const ColorPicker = defineComponent({
     const squareStyle = computed<CSSProperties>(() => ({
       width: `${squareSize.value}px`,
       height: `${squareSize.value}px`,
-      backgroundColor: `${rgb2hex(hsl2rgb([Number(hsl.value[0]), 1, 0.5]))}`,
+      backgroundColor: `${rgb2hex(hsl2rgb([hsl.value[0], 1, 0.5]))}`,
       left: `${mid.value - squareSize.value / 2}px`,
       top: `${mid.value - squareSize.value / 2}px`,
     }))
@@ -116,7 +131,7 @@ const ColorPicker = defineComponent({
 
       let startAngle = 0
       let endAngle = 0
-      let startColor: string | undefined = DEFAULT_START_COLOR
+      let startColor: string | undefined = DEFAULT_COLOR
       let endColor: string | undefined = undefined
 
       // 做变换之前先保存状态
@@ -173,7 +188,6 @@ const ColorPicker = defineComponent({
      */
     const drawMask = () => {
       const size = squareSize.value
-      const sq = squareSize.value / 2
 
       function calculateMask(
         sizex: number,
@@ -211,17 +225,20 @@ const ColorPicker = defineComponent({
       })
 
       ctx.putImageData(frame, 0, 0)
-      ;(ctxCircle.value as CanvasRenderingContext2D).drawImage(
-        buffer,
-        0,
-        0,
-        sz + 1,
-        sz + 1,
-        -sq,
-        -sq,
-        sq * 2,
-        sq * 2
-      )
+
+      if (ctxCircle.value) {
+        ctxCircle.value.drawImage(
+          buffer,
+          0,
+          0,
+          sz + 1,
+          sz + 1,
+          -size / 2,
+          -size / 2,
+          size,
+          size
+        )
+      }
     }
 
     /**
@@ -231,11 +248,11 @@ const ColorPicker = defineComponent({
       const sz = props.size
       const lw = Math.ceil(markerSize.value / 4)
       const r = markerSize.value - lw + 1
-      const angle = Number(hsl.value[0]) * 6.28
+      const angle = hsl.value[0] * 6.28
       const x1 = Math.sin(angle) * radius.value
       const y1 = -Math.cos(angle) * radius.value
-      const x2 = squareSize.value * (0.5 - Number(hsl.value[1]))
-      const y2 = squareSize.value * (0.5 - Number(hsl.value[2]))
+      const x2 = squareSize.value * (0.5 - hsl.value[1])
+      const y2 = squareSize.value * (0.5 - hsl.value[2])
       const c1 = invert.value ? '#fff' : '#000'
       const c2 = invert.value ? '#000' : '#fff'
       const circles = [
@@ -259,19 +276,20 @@ const ColorPicker = defineComponent({
       }
     }
 
-    const setColor = (hexColor: string) => {
-      const unpack = hex2rgb(hexColor)
-      if (color.value !== hexColor && unpack) {
+    const setColor = (hexColor: HEXColorString) => {
+      const rgbTuple = hex2rgb(hexColor)
+
+      if (color.value !== hexColor && rgbTuple) {
         color.value = hexColor
-        rgb.value = unpack
+        rgb.value = rgbTuple
         hsl.value = rgb2hsl(rgb.value)
         updateDisplay()
       }
     }
 
-    const setHSL = (hslValue: number[]) => {
-      hsl.value = hslValue
-      rgb.value = hsl2rgb(hslValue)
+    const setHSL = (hslTuple: HSLColorTuple) => {
+      hsl.value = hslTuple
+      rgb.value = hsl2rgb(hslTuple)
       color.value = rgb2hex(rgb.value)
       updateDisplay()
     }
@@ -299,7 +317,7 @@ const ColorPicker = defineComponent({
       }
 
       // Set new HSL parameters
-      if (circleDrag.value) {
+      if (isCircleDragging.value) {
         const hue = Math.atan2(pos.x, -pos.y) / 6.28
         setHSL([(hue + 1) % 1, hsl.value[1], hsl.value[2]])
       } else {
@@ -312,18 +330,18 @@ const ColorPicker = defineComponent({
     const mouseup = () => {
       document.removeEventListener('mousemove', mousemove)
       document.removeEventListener('mouseup', mouseup)
-      dragging.value = false
+      isDragging.value = false
     }
 
     const mousedown = (event: MouseEvent) => {
       if (props.disabled) return
 
-      if (!dragging.value) {
+      if (!isDragging.value) {
         document.addEventListener('mousemove', mousemove)
         document.addEventListener('mouseup', mouseup)
       }
 
-      dragging.value = true
+      isDragging.value = true
 
       const offset = {
         left: containerRef.value?.getBoundingClientRect().left as number,
@@ -335,7 +353,7 @@ const ColorPicker = defineComponent({
         y: event.clientY - offset.top - mid.value,
       }
 
-      circleDrag.value =
+      isCircleDragging.value =
         Math.max(Math.abs(pos.x), Math.abs(pos.y)) > squareSize.value / 2 + 2
 
       mousemove(event)
@@ -348,13 +366,13 @@ const ColorPicker = defineComponent({
       ctxOperation.value?.translate(mid.value, mid.value)
       drawCircle()
       drawMask()
-      setColor(props.modelValue || DEFAULT_START_COLOR)
+      setColor(props.modelValue)
     })
 
     watch(
       () => props.modelValue,
       (newValue) => {
-        if (!dragging.value) {
+        if (!isDragging.value) {
           console.log(newValue)
           setColor(newValue)
         }
@@ -363,9 +381,7 @@ const ColorPicker = defineComponent({
 
     return () => (
       <div class="color-picker" ref={containerRef} style={containerStyle.value}>
-        <div class="color-picker__square" style={squareStyle.value}>
-          {color.value}
-        </div>
+        <div class="color-picker__square" style={squareStyle.value} />
         <canvas
           class="color-picker__circle"
           ref={canvasCircleRef}

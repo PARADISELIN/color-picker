@@ -15,7 +15,15 @@ const App = defineComponent({
 
     return () => (
       <div>
-        <div>{color.value}</div>
+        <div
+          style={{
+            width: '100px',
+            height: '100px',
+            backgroundColor: color.value,
+          }}
+        >
+          {color.value}
+        </div>
         <ColorPicker v-model={color.value} />
       </div>
     )

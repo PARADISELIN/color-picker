@@ -1,26 +1,55 @@
-export function dec2hex(x: number) {
+import type { HSLColorTuple, RGBColorTuple, HEXColorString } from './types'
+
+function dec2hex(x: number): string {
   return (x < 16 ? '0' : '') + x.toString(16)
 }
 
-export function rgb2hex(rgb: number[]): string {
+function hue2rgb(m1: number, m2: number, h: number): number {
+  h = (h + 1) % 1
+  if (h * 6 < 1) return m1 + (m2 - m1) * h * 6
+  if (h * 2 < 1) return m2
+  if (h * 3 < 2) return m1 + (m2 - m1) * (0.66666 - h) * 6
+  return m1
+}
+
+/**
+ * @description RGBColorTuple 转十六进制颜色字符串
+ * @param rgb
+ * @returns
+ */
+export function rgb2hex(rgb: RGBColorTuple): HEXColorString {
   const r = Math.round(rgb[0] * 255)
   const g = Math.round(rgb[1] * 255)
   const b = Math.round(rgb[2] * 255)
   return `#${dec2hex(r) + dec2hex(g) + dec2hex(b)}`
 }
 
-export function hex2rgb(color: string): number[] {
+/**
+ * @description 十六进制颜色字符串转 RGBColorTuple
+ * @param color
+ * @returns
+ */
+export function hex2rgb(color: HEXColorString): RGBColorTuple {
   if (!color.startsWith('#') || (color.length !== 4 && color.length !== 7))
     throw new Error('format error')
 
   if (color.length === 7) {
-    return [1, 3, 5].map((i) => parseInt(color.substring(i, i + 2), 16) / 255)
+    return [1, 3, 5].map(
+      (i) => parseInt(color.substring(i, i + 2), 16) / 255
+    ) as RGBColorTuple
   }
 
-  return [1, 2, 3].map((i) => parseInt(color.substring(i, i + 1), 16) / 15)
+  return [1, 2, 3].map(
+    (i) => parseInt(color.substring(i, i + 1), 16) / 15
+  ) as RGBColorTuple
 }
 
-export function rgb2hsl(rgb: number[]) {
+/**
+ * @description RGBColorTuple 转 HSLColorTuple
+ * @param rgb
+ * @returns
+ */
+export function rgb2hsl(rgb: RGBColorTuple): HSLColorTuple {
   const r = rgb[0]
   const g = rgb[1]
   const b = rgb[2]
@@ -46,15 +75,12 @@ export function rgb2hsl(rgb: number[]) {
   return [h, s, l]
 }
 
-export function hue2rgb(m1: number, m2: number, h: number): number {
-  h = (h + 1) % 1
-  if (h * 6 < 1) return m1 + (m2 - m1) * h * 6
-  if (h * 2 < 1) return m2
-  if (h * 3 < 2) return m1 + (m2 - m1) * (0.66666 - h) * 6
-  return m1
-}
-
-export function hsl2rgb(hsl: number[]): number[] {
+/**
+ * @description HSLColorTuple 转 RGBColorTuple
+ * @param hsl
+ * @returns
+ */
+export function hsl2rgb(hsl: HSLColorTuple): RGBColorTuple {
   const h = hsl[0]
   const s = hsl[1]
   const l = hsl[2]
