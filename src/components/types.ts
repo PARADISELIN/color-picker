@@ -16,6 +16,10 @@ export const colorPickerProps = {
     type: String,
     default: DEFAULT_COLOR,
   },
+  modelValue: {
+    type: String,
+    default: DEFAULT_COLOR,
+  },
 } as const
 
 export type ColorPickerProps = ExtractPropTypes<typeof colorPickerProps>
